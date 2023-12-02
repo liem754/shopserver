@@ -1,5 +1,6 @@
 const { createAccessToken } = require("../middlewares/jwt");
 const User = require("../models/user");
+const { sendMail, sendMail1 } = require("../ultils/sendMail");
 
 const register = (data) =>
   new Promise(async (resolve, reject) => {
@@ -69,8 +70,110 @@ const getOne = (id) =>
       reject(error);
     }
   });
+
+const contact = (data) =>
+  new Promise(async (resolve, reject) => {
+    try {
+      const main = {
+        email: data?.email,
+        html: "Cảm ơn bạn đã gữi liên hệ, Chúng tôi sẽ trả lời câu hỏi của bạn trong thời gian sớm nhất !",
+        subject: "Phản hồi từ Cửa hàng thời trang MOSA.",
+      };
+
+      const rs = await sendMail(main);
+      const main1 = {
+        email: data?.email,
+        html: `${data?.messege}`,
+        subject: `Người dùng ${data?.email} gửi liên hệ đến Cửa hàng thời trang MOSA.`,
+      };
+
+      const rss = await sendMail1(main1);
+      resolve({
+        err: rs && rss ? 0 : -1,
+        mes: rs && rss ? "Thành Công" : "Thất bại ",
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+const updateCart = (data, id) =>
+  new Promise(async (resolve, reject) => {
+    try {
+      const kt = await User.findById(id);
+
+      const kt2 = kt?.cart?.find((el) => el.product.toString() === data?.pid);
+      console.log(kt2);
+      if (kt2) {
+        const rs = await User.updateOne(
+          {
+            cart: { $elemMatch: kt2 },
+          },
+          {
+            $set: {
+              "cart.$.price": data?.price,
+              "cart.$.quantity": data?.quantity,
+            },
+          },
+          {
+            new: true,
+          }
+        );
+        resolve({
+          err: rs ? 0 : -1,
+          mes: rs ? "Cập nhật giỏ hàng thành Công" : "Thất bại ",
+        });
+      } else {
+        const rss = await User.findByIdAndUpdate(
+          id,
+          {
+            $push: {
+              cart: {
+                product: data?.pid,
+                quantity: data?.quantity,
+                price: data?.price,
+                thumb: data?.thumb,
+                title: data?.title,
+              },
+            },
+          },
+          {
+            new: true,
+          }
+        );
+        resolve({
+          err: rss ? 0 : -1,
+          mes: rss ? "Đã thêm vào giỏ hàng" : "Thất bại ",
+        });
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
+const deleteCart = (data, id) =>
+  new Promise(async (resolve, reject) => {
+    try {
+      const rs = await User.findByIdAndUpdate(
+        id,
+        { $pull: { cart: { product: data?.pid } } },
+
+        {
+          new: true,
+        }
+      );
+
+      resolve({
+        err: rs ? 0 : -1,
+        mes: rs ? "Đã Xóa Sản Phẩm Khỏi Giỏ Hàng!" : "Some thing went wrong!",
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
 module.exports = {
   register,
   login,
   getOne,
+  contact,
+  updateCart,
+  deleteCart,
 };

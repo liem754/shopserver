@@ -42,7 +42,12 @@ const getNews = (data) =>
       if (data?.category) {
         formatQueries.category = { $regex: queries.category, $options: "i" };
       }
-
+      if (data?.q) {
+        formatQueries["$or"] = [
+          { title: { $regex: data.q, $options: "i" } },
+          { description: { $regex: data.q, $options: "i" } },
+        ];
+      }
       let queryCommand = New.find(formatQueries);
       // 2) Sorting
       if (data?.sort) {
