@@ -30,7 +30,8 @@ const login = (data) =>
 
       if (!rs) {
         resolve({
-          err: 1,
+          status: 401,
+          err: -1,
           mes: "Tài khoản không tồn tại, vui lòng đăng ký !",
         });
       } else {
@@ -43,7 +44,9 @@ const login = (data) =>
           });
         } else {
           resolve({
-            err: 1,
+            status: 401,
+
+            err: -1,
             mes: "Sai password !",
           });
         }
@@ -52,7 +55,22 @@ const login = (data) =>
       reject(error);
     }
   });
+const getOne = (id) =>
+  new Promise(async (resolve, reject) => {
+    try {
+      const rs = await User.findOne({ _id: id });
+
+      resolve({
+        err: rs ? 0 : -1,
+        mes: rs ? "Thành công !" : "Thất bại !",
+        userData: rs,
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
 module.exports = {
   register,
   login,
+  getOne,
 };
