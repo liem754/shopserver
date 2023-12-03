@@ -46,6 +46,8 @@ var userSchema = new mongoose.Schema(
         price: Number,
         title: String,
         thumb: String,
+        size: String,
+        color: String,
       },
     ],
     passwordResetToken: {

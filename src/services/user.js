@@ -1,5 +1,6 @@
 const { createAccessToken } = require("../middlewares/jwt");
 const User = require("../models/user");
+const Order = require("../models/order");
 const { sendMail, sendMail1 } = require("../ultils/sendMail");
 
 const register = (data) =>
@@ -59,7 +60,7 @@ const login = (data) =>
 const getOne = (id) =>
   new Promise(async (resolve, reject) => {
     try {
-      const rs = await User.findOne({ _id: id });
+      const rs = await User.findOne({ _id: id }).select("-password -role");
 
       resolve({
         err: rs ? 0 : -1,
@@ -96,55 +97,51 @@ const contact = (data) =>
       reject(error);
     }
   });
-const updateCart = (data, id) =>
+const createOrder = (data, id) =>
   new Promise(async (resolve, reject) => {
     try {
-      const kt = await User.findById(id);
-
-      const kt2 = kt?.cart?.find((el) => el.product.toString() === data?.pid);
-      console.log(kt2);
-      if (kt2) {
-        const rs = await User.updateOne(
-          {
-            cart: { $elemMatch: kt2 },
-          },
-          {
-            $set: {
-              "cart.$.price": data?.price,
-              "cart.$.quantity": data?.quantity,
-            },
-          },
-          {
-            new: true,
-          }
-        );
-        resolve({
-          err: rs ? 0 : -1,
-          mes: rs ? "Cập nhật giỏ hàng thành Công" : "Thất bại ",
-        });
-      } else {
-        const rss = await User.findByIdAndUpdate(
+      if (data?.address) {
+        await User.findByIdAndUpdate(
           id,
-          {
-            $push: {
-              cart: {
-                product: data?.pid,
-                quantity: data?.quantity,
-                price: data?.price,
-                thumb: data?.thumb,
-                title: data?.title,
-              },
-            },
-          },
-          {
-            new: true,
-          }
+          { address: data?.address, cart: [] },
+          { new: true }
         );
-        resolve({
-          err: rss ? 0 : -1,
-          mes: rss ? "Đã thêm vào giỏ hàng" : "Thất bại ",
-        });
       }
+      const rs = await Order.create({
+        products: data?.cart,
+        transpost: data?.transpost,
+        total: data?.total,
+        pay: data?.pay,
+        address: data?.address,
+        orderBy: id,
+      });
+
+      resolve({
+        err: rs ? 0 : -1,
+        mes: rs
+          ? "Đặt hàng thành công! Vui lòng kiểm tra lịch sử mua hàng !"
+          : "Thất bại ",
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+const updateUser = (data, id) =>
+  new Promise(async (resolve, reject) => {
+    try {
+      const rs = await User.findByIdAndUpdate(
+        id,
+        data,
+
+        {
+          new: true,
+        }
+      );
+
+      resolve({
+        err: rs ? 0 : -1,
+        mes: rs ? "Cập nhật thông tin thành công!" : "Some thing went wrong!",
+      });
     } catch (error) {
       reject(error);
     }
@@ -169,6 +166,96 @@ const deleteCart = (data, id) =>
       reject(error);
     }
   });
+const getOrders = (data, id) =>
+  new Promise(async (resolve, reject) => {
+    try {
+      const rs = await Order.find({ orderBy: id, status: data?.status });
+
+      resolve({
+        err: rs ? 0 : -1,
+        mes: rs ? "Thành công !" : "Some thing went wrong!",
+        orders: rs,
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+
+const updateOrders = (data) =>
+  new Promise(async (resolve, reject) => {
+    try {
+      const rs = await Order.findByIdAndUpdate(
+        data?.oid,
+        {
+          status: data?.status,
+        },
+        { new: true }
+      );
+
+      resolve({
+        err: rs ? 0 : -1,
+        mes: rs ? "Cập nhật đơn hàng thành công !" : "Some thing went wrong!",
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+const updateCart = (data, id) =>
+  new Promise(async (resolve, reject) => {
+    try {
+      const kt = await User.findById(id);
+
+      const kt2 = kt?.cart?.find((el) => el.product.toString() === data?.pid);
+      if (kt2) {
+        const rs = await User.updateOne(
+          {
+            cart: { $elemMatch: kt2 },
+          },
+          {
+            $set: {
+              "cart.$.price": data?.price,
+              "cart.$.quantity": data?.quantity,
+              "cart.$.color": data?.color,
+              "cart.$.size": data?.size,
+            },
+          },
+          {
+            new: true,
+          }
+        );
+        resolve({
+          err: rs ? 0 : -1,
+          mes: rs ? "Cập nhật giỏ hàng thành Công" : "Thất bại ",
+        });
+      } else {
+        const rss = await User.findByIdAndUpdate(
+          id,
+          {
+            $push: {
+              cart: {
+                product: data?.pid,
+                quantity: data?.quantity,
+                price: data?.price,
+                thumb: data?.thumb,
+                title: data?.title,
+                color: data?.color,
+                size: data?.size,
+              },
+            },
+          },
+          {
+            new: true,
+          }
+        );
+        resolve({
+          err: rss ? 0 : -1,
+          mes: rss ? "Đã thêm vào giỏ hàng" : "Thất bại ",
+        });
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
 module.exports = {
   register,
   login,
@@ -176,4 +263,8 @@ module.exports = {
   contact,
   updateCart,
   deleteCart,
+  updateUser,
+  createOrder,
+  getOrders,
+  updateOrders,
 };
